@@ -1,0 +1,37 @@
+name: Daily Schedule Update
+
+on:
+  schedule:
+    # UTCの21:00 ＝ 日本時間の翌朝 06:00 に毎日実行
+    - cron: '0 21 * * *'
+  workflow_dispatch: # 手動でもいつでも実行できるボタンを有効化
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Pythonのセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: ライブラリのインストール
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: スクレイピング実行
+        run: python scraper.py
+
+      - name: 更新されたCSVを保存（コミット＆プッシュ）
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add events.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update events.csv" && git push)
